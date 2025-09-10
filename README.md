@@ -1,0 +1,1 @@
+# EcoSort AI:Intelligent Waste Analyzer & Educator
