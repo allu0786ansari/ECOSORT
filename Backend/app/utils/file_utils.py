@@ -1,17 +1,17 @@
 import os
-import shutil
+import uuid
 from fastapi import UploadFile
-from uuid import uuid4
 
-async def save_upload_file(upload_file: UploadFile) -> str:
-    upload_dir = "./uploads"
-    os.makedirs(upload_dir, exist_ok=True)
+def save_upload(file: UploadFile, upload_dir: str) -> str:
+    """
+    Save uploaded file to upload_dir with unique filename.
+    Returns path to saved file.
+    """
+    ext = os.path.splitext(file.filename)[-1]
+    filename = f"{uuid.uuid4().hex}{ext}"
+    path = os.path.join(upload_dir, filename)
 
-    file_extension = os.path.splitext(upload_file.filename)[1]
-    unique_filename = f"{uuid4().hex}{file_extension}"
-    file_path = os.path.join(upload_dir, unique_filename)
+    with open(path, "wb") as buffer:
+        buffer.write(file.file.read())
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(upload_file.file, buffer)
-
-    return file_path
+    return path

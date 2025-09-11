@@ -1,64 +1,93 @@
-import cv2
-import numpy as np
-from ultralytics import YOLO
-from app.schemas.predict import PredictionResponse
 import os
-import logging
+from typing import Dict, Any, List
+from ultralytics import YOLO
+from app.config import get_settings
+from loguru import logger
+from app.utils.video_utils import extract_frames
 
-logger = logging.getLogger(__name__)
+settings = get_settings()
 
-class YOLOService:
-    def __init__(self):
-        self.model = None
-        self.load_model()
-    
-    def load_model(self):
-        try:
-            # This would load your trained YOLO model
-            # For now, we'll use a mock implementation
-            self.model = "mock"
-            logger.info("YOLO model loaded successfully")
-        except Exception as e:
-            logger.error(f"Failed to load YOLO model: {str(e)}")
-            raise
-    
-    async def predict(self, image_path: str) -> PredictionResponse:
-        # In a real implementation, this would run the YOLO model
-        # For now, we'll return mock data
-        
-        # Mock waste categories and responses
-        import random
-        
-        waste_categories = [
-            {
-                "item": "Plastic Water Bottle",
-                "category": "Recyclable",
-                "confidence": random.randint(85, 99),
-                "instructions": "Remove cap and label. Rinse thoroughly. Place in recycling bin.",
-                "facts": "Did you know? It takes 450 years for a plastic bottle to decompose!",
-                "ecoTip": "Consider using a reusable water bottle to reduce plastic waste.",
-                "color": "green"
-            },
-            {
-                "item": "Banana Peel",
-                "category": "Compostable",
-                "confidence": random.randint(85, 99),
-                "instructions": "Perfect for composting! Add to your compost bin or food waste collection.",
-                "facts": "Banana peels are rich in potassium and make excellent fertilizer!",
-                "ecoTip": "You can also use banana peels to polish leather shoes naturally.",
-                "color": "yellow"
-            },
-            {
-                "item": "Pizza Box",
-                "category": "Mixed Waste",
-                "confidence": random.randint(85, 99),
-                "instructions": "Remove greasy parts and dispose as general waste. Clean parts can be recycled.",
-                "facts": "Greasy cardboard contaminates recycling streams and cannot be processed.",
-                "ecoTip": "Order pizza without extra grease or ask for eco-friendly packaging.",
-                "color": "orange"
-            }
-        ]
-        
-        result = random.choice(waste_categories)
-        
-        return PredictionResponse(**result)
+# Load YOLO model at service startup
+try:
+    logger.info(f"Loading YOLO model from {settings.YOLO_MODEL_PATH}")
+    model = YOLO(settings.YOLO_MODEL_PATH)
+except Exception as e:
+    logger.error(f"Failed to load YOLO model: {e}")
+    model = None
+
+
+def predict_image(image_path: str) -> Dict[str, Any]:
+    """
+    Run YOLOv12 inference on a single image.
+    Returns top label, confidence, and bounding box list.
+    """
+    if model is None:
+        raise RuntimeError("YOLO model not loaded")
+
+    results = model.predict(
+        source=image_path,
+        conf=settings.YOLO_CONFIDENCE_THRESHOLD,
+        iou=settings.YOLO_IOU_THRESHOLD,
+        verbose=False,
+    )
+
+    if not results:
+        return {"label": "unknown", "confidence": 0.0, "bboxes": []}
+
+    result = results[0]
+
+    # Extract best prediction (highest confidence)
+    if len(result.boxes) == 0:
+        return {"label": "unknown", "confidence": 0.0, "bboxes": []}
+
+    best_box = result.boxes[0]
+    label = model.names[int(best_box.cls[0])]
+    confidence = float(best_box.conf[0])
+
+    bboxes: List[Dict[str, Any]] = []
+    for box in result.boxes:
+        bboxes.append({
+            "label": model.names[int(box.cls[0])],
+            "confidence": float(box.conf[0]),
+            "bbox": box.xyxy[0].tolist(),  # [x1, y1, x2, y2]
+        })
+
+    return {
+        "label": label,
+        "confidence": confidence,
+        "bboxes": bboxes,
+    }
+
+
+def predict_video(video_path: str, frame_interval: int = 30) -> Dict[str, Any]:
+    """
+    Run YOLO inference on a video by sampling frames.
+    Returns majority label across frames and average confidence.
+    """
+    frames = extract_frames(video_path, interval=frame_interval)
+    if not frames:
+        return {"label": "unknown", "confidence": 0.0, "bboxes": []}
+
+    label_counts = {}
+    total_conf = 0.0
+    total_preds = 0
+
+    for frame in frames:
+        res = predict_image(frame)
+        if res["label"] != "unknown":
+            label_counts[res["label"]] = label_counts.get(res["label"], 0) + 1
+            total_conf += res["confidence"]
+            total_preds += 1
+
+    if total_preds == 0:
+        return {"label": "unknown", "confidence": 0.0, "bboxes": []}
+
+    # Most frequent label across frames
+    final_label = max(label_counts, key=label_counts.get)
+    avg_conf = total_conf / total_preds
+
+    return {
+        "label": final_label,
+        "confidence": avg_conf,
+        "bboxes": [],  # Could be extended with aggregated detections
+    }

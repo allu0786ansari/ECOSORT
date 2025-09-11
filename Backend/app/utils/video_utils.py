@@ -1,17 +1,24 @@
+import cv2
 import os
-import shutil
-from fastapi import UploadFile
-from uuid import uuid4
 
-async def save_upload_video(upload_file: UploadFile) -> str:
-    upload_dir = "./uploads/videos"
-    os.makedirs(upload_dir, exist_ok=True)
+def extract_frames(video_path: str, interval: int = 30):
+    """
+    Extract frames from video every `interval` frames.
+    Returns list of frame file paths.
+    """
+    frames = []
+    vidcap = cv2.VideoCapture(video_path)
+    count = 0
 
-    file_extension = os.path.splitext(upload_file.filename)[1]
-    unique_filename = f"{uuid4().hex}{file_extension}"
-    file_path = os.path.join(upload_dir, unique_filename)
+    while vidcap.isOpened():
+        ret, frame = vidcap.read()
+        if not ret:
+            break
+        if count % interval == 0:
+            frame_path = f"{video_path}_frame_{count}.jpg"
+            cv2.imwrite(frame_path, frame)
+            frames.append(frame_path)
+        count += 1
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(upload_file.file, buffer)
-
-    return file_path
+    vidcap.release()
+    return frames
