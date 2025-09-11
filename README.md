@@ -1,1 +1,1 @@
-# EcoSort AI:Intelligent Waste Analyzer & Educator: Ongoing
+# EcoSort AI:Intelligent Waste Analyzer & Educator
