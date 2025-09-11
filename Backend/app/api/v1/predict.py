@@ -1,33 +1,23 @@
-from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
-from fastapi.responses import JSONResponse
-from app.schemas.predict import PredictionResponse
-from app.services.yolo_service import YOLOService
-from app.utils.file_utils import save_upload_file
-import logging
+# app/api/v1/predict.py
+from fastapi import APIRouter, File, UploadFile, HTTPException
+from app.config import get_settings
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+settings = get_settings()
 
-# Initialize YOLO service
-yolo_service = YOLOService()
+@router.post("/predict")
+async def predict(file: UploadFile = File(...)):
+    """
+    Endpoint to classify an uploaded image/video using YOLO.
+    TODO: connect with yolo_service.py for inference.
+    """
+    filename = file.filename
+    if not filename:
+        raise HTTPException(status_code=400, detail="No file uploaded")
 
-@router.post("/predict", response_model=PredictionResponse)
-async def predict_waste(
-    file: UploadFile = File(...)
-):
-    try:
-        # Save uploaded file temporarily
-        file_path = await save_upload_file(file)
-        
-        # Process image with YOLO
-        result = await yolo_service.predict(file_path)
-        
-        # Clean up temporary file
-        import os
-        os.remove(file_path)
-        
-        return result
-        
-    except Exception as e:
-        logger.error(f"Prediction error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+    return {
+        "filename": filename,
+        "label": "plastic",    # placeholder
+        "confidence": 0.92,    # placeholder
+        "instructions": "Dispose in the plastic recycling bin."
+    }
