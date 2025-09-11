@@ -1,17 +1,15 @@
-# app/api/v1/chatbot.py
 from fastapi import APIRouter, Body
-from app.config import get_settings
+from app.services.chatbot_service import get_chatbot_response
 
 router = APIRouter()
-settings = get_settings()
 
 @router.post("/chat")
 async def chat(message: str = Body(..., embed=True)):
     """
-    Chatbot endpoint.
-    TODO: connect with chatbot_service.py using Gemini API.
+    Chatbot endpoint powered by Gemini API.
     """
+    bot_reply = get_chatbot_response(message)
     return {
         "user_message": message,
-        "bot_reply": "This is a placeholder response from EcoSortAI chatbot."
+        "bot_reply": bot_reply
     }

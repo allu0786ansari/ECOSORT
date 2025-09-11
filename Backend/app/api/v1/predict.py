@@ -1,23 +1,43 @@
-# app/api/v1/predict.py
-from fastapi import APIRouter, File, UploadFile, HTTPException
+import os
+from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
+from fastapi.responses import JSONResponse
 from app.config import get_settings
+from app.utils.file_utils import save_upload
+from app.services import yolo_service
 
 router = APIRouter()
 settings = get_settings()
 
+
 @router.post("/predict")
 async def predict(file: UploadFile = File(...)):
     """
-    Endpoint to classify an uploaded image/video using YOLO.
-    TODO: connect with yolo_service.py for inference.
+    Upload an image or video for YOLOv12 classification.
+    Supports .jpg, .jpeg, .png, .mp4
     """
-    filename = file.filename
-    if not filename:
-        raise HTTPException(status_code=400, detail="No file uploaded")
+    try:
+        # Save file to static/uploads
+        upload_dir = settings.UPLOAD_DIR
+        os.makedirs(upload_dir, exist_ok=True)
+        saved_path = save_upload(file, upload_dir)
 
-    return {
-        "filename": filename,
-        "label": "plastic",    # placeholder
-        "confidence": 0.92,    # placeholder
-        "instructions": "Dispose in the plastic recycling bin."
-    }
+        # Decide if image or video
+        ext = os.path.splitext(saved_path)[-1].lower()
+        if ext in [".jpg", ".jpeg", ".png"]:
+            result = yolo_service.predict_image(saved_path)
+        elif ext in [".mp4", ".avi", ".mov"]:
+            result = yolo_service.predict_video(saved_path)
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported file type")
+
+        return JSONResponse(
+            content={
+                "filename": file.filename,
+                "label": result["label"],
+                "confidence": result["confidence"],
+                "bboxes": result.get("bboxes", []),
+                "instructions": f"Dispose in the {result['label']} recycling bin."
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {e}")

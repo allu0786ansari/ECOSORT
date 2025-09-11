@@ -1,15 +1,19 @@
-# app/api/v1/tts.py
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, HTTPException
+from app.services.tts_service import generate_tts
 
 router = APIRouter()
 
 @router.post("/tts")
-async def generate_tts(text: str = Body(..., embed=True)):
+async def generate_tts_api(text: str = Body(..., embed=True)):
     """
-    Generate speech (TTS) for given text.
-    TODO: connect with tts_service.py.
+    Convert text into speech (mp3).
+    Returns URL of generated audio file.
     """
-    return {
-        "text": text,
-        "audio_url": "/static/audio/example.mp3"  # placeholder
-    }
+    try:
+        audio_url = generate_tts(text)
+        return {
+            "text": text,
+            "audio_url": audio_url
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"TTS generation failed: {e}")

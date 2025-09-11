@@ -1,43 +1,35 @@
-import openai
-import os
-from app.app.config import settings
-import logging
+import google.generativeai as genai
+from app.config import get_settings
+from loguru import logger
 
-logger = logging.getLogger(__name__)
+settings = get_settings()
 
-class ChatbotService:
-    def __init__(self):
-        # Initialize OpenAI client if API key is available
-        if settings.OPENAI_API_KEY:
-            openai.api_key = settings.OPENAI_API_KEY
-        else:
-            logger.warning("OpenAI API key not found. Using mock responses.")
-    
-    async def get_response(self, message: str) -> str:
-        # If OpenAI is configured, use it
-        if settings.OPENAI_API_KEY:
-            try:
-                response = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are an expert waste management and recycling assistant. Provide helpful, accurate information about waste sorting, recycling, composting, and sustainability."},
-                        {"role": "user", "content": message}
-                    ],
-                    max_tokens=150
-                )
-                return response.choices[0].message.content
-            except Exception as e:
-                logger.error(f"OpenAI API error: {str(e)}")
-                # Fall back to mock responses
-        
-        # Mock responses if OpenAI is not available
-        mock_responses = [
-            "Great question! Plastic bottles should be rinsed and placed in the recycling bin.",
-            "That's a common waste sorting challenge. Food waste should generally be composted.",
-            "Excellent eco-conscious thinking! Reducing single-use plastics is key to sustainability.",
-            "I can definitely help with that. Glass is 100% recyclable and can be recycled endlessly.",
-            "For proper e-waste disposal, look for certified electronics recycling facilities in your area."
-        ]
-        
-        import random
-        return random.choice(mock_responses)
+# Configure Gemini client
+try:
+    if settings.GEMINI_API_KEY:
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        logger.info("Gemini API client configured")
+    else:
+        logger.warning("Gemini API key not found! Chatbot will not work properly.")
+except Exception as e:
+    logger.error(f"Gemini API init failed: {e}")
+
+
+def get_chatbot_response(message: str) -> str:
+    """
+    Send user message to Gemini API and return reply.
+    Fallback: generic static response.
+    """
+    if not settings.GEMINI_API_KEY:
+        return "Chatbot unavailable (missing API key). Please try later."
+
+    try:
+        model = genai.GenerativeModel(settings.GEMINI_MODEL)
+        response = model.generate_content(
+            f"You are EcoSortAI, an assistant that helps with waste management and recycling.\n"
+            f"User: {message}\nAssistant:"
+        )
+        return response.text if response and hasattr(response, "text") else "I couldn't generate a response."
+    except Exception as e:
+        logger.error(f"Gemini API error: {e}")
+        return "Sorry, I had trouble answering. Please try again later."
