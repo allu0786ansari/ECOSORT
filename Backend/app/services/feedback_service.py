@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.feedback import Feedback
+from app.models.feedback_m import Feedback_m
 from app.schemas.feedback import FeedbackRequest, FeedbackResponse
 from loguru import logger
 
@@ -8,7 +8,8 @@ def save_feedback(db: Session, feedback_data: FeedbackRequest) -> FeedbackRespon
     Save user feedback into the database.
     """
     try:
-        feedback = Feedback(
+        # Corrected: Use the imported class name, Feedback_m
+        feedback = Feedback_m(
             user_id=feedback_data.user_id,
             predicted_label=feedback_data.predicted_label,
             correct_label=feedback_data.correct_label,
@@ -39,4 +40,5 @@ def get_all_feedback(db: Session):
     Retrieve all feedback entries.
     Useful for analytics and model retraining.
     """
-    return db.query(Feedback).all()
+    # Corrected: Use the imported class name, Feedback_m
+    return db.query(Feedback_m).all()
