@@ -1,6 +1,6 @@
 from app.database.session import engine, Base
 from app.models.user import User
-from app.models.feedback import Feedback
+from Backend.app.models.feedback_m import Feedback
 from app.models.leaderboard import Leaderboard
 
 def init_db():
