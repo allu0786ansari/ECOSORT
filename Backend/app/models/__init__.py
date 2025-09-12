@@ -5,7 +5,7 @@ SQLAlchemy ORM models for EcoSortAI:
 - User
 - Leaderboard
 """
-from app.models.feedback import Feedback
+from app.models.feedback_m import Feedback
 from app.models.user import User
 from app.models.leaderboard import Leaderboard
 

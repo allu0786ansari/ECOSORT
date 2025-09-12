@@ -3,8 +3,6 @@ from app.models.user import User
 from app.models.feedback_m import Feedback
 from app.models.leaderboard import Leaderboard
 from loguru import logger
-from app.core.logging import logger
-
 
 
 def init_db():
