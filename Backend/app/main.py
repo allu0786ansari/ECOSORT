@@ -3,8 +3,9 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from loguru import logger
 from app.config import get_settings
+from app.core.logging import logger
+
 
 settings = get_settings()
 
@@ -37,7 +38,7 @@ def create_app() -> FastAPI:
     # Include API routers (import routers lazily; file not present until implemented)
     try:
         # versioned API package
-        from app.api.v1 import predict, chatbot, feedback, analytics, gamification, tts  # type: ignore
+        from app.api.v1 import predict, chatbot, feedback, analytics, gamification, tts,auth, user  # type: ignore
 
         # Each module should expose `router` variable
         app.include_router(predict.router, prefix="/api/v1", tags=["predict"])
@@ -46,6 +47,9 @@ def create_app() -> FastAPI:
         app.include_router(analytics.router, prefix="/api/v1", tags=["analytics"])
         app.include_router(gamification.router, prefix="/api/v1", tags=["gamification"])
         app.include_router(tts.router, prefix="/api/v1", tags=["tts"])
+        app.include_router(user.router, prefix="/api/v1", tags=["user"])
+        app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
+
     except Exception as exc:  # modules likely not implemented yet
         logger.debug("API routers not yet available to include: {}", exc)
 
