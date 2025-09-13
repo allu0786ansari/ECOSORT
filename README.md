@@ -7,5 +7,5 @@
 - User feedback loop (correct/incorrect → dataset growth).
 - Voice & multimodal support (TTS for instructions, optional STT for chatbot).
 - Analytics & admin dashboard (usage stats, common waste types, accuracy).
-- Deployment-ready design (Dockerized, cloud-ready).
+- Deployment-ready design (Dockerized, cloud-ready)- optional.
 - Future roadmap: AR bins, rewards integration, IoT smart bins.
