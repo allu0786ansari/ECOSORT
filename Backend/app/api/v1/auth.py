@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from jose import jwt, JWTError
 
-from app.schemas.auth import UserCreate, UserLogin, PasswordResetRequest, PasswordReset
+from app.schemas.auth import UserCreate, UserLogin, UserResponse, PasswordResetRequest, PasswordReset
 from app.utils.auth_utils import create_access_token, verify_password, hash_password
 from app.utils.email import send_password_reset_email, send_welcome_email
 from app.database.session import get_db
@@ -11,34 +11,35 @@ from app.config import get_settings
 
 settings = get_settings()
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(tags=["Authentication"])
 
-@router.post("/signup")
-async def signup(user: UserCreate, db: Session = Depends(get_db)):
+
+# ✅ Signup
+@router.post("/signup", response_model=UserResponse)
+def signup(user: UserCreate, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == user.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
     hashed_password = hash_password(user.password)
-    new_user = User(email=user.email, username=user.name, password_hash=hashed_password)
+    new_user = User(username=user.name, email=user.email, password_hash=hashed_password)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
 
-    # send welcome email
-    await send_welcome_email(new_user)
+    token = create_access_token({"sub": new_user.email})
+    return {"id": new_user.id, "username": new_user.username, "email": new_user.email, "token": token}
 
-    return {"message": "User created successfully", "user_id": new_user.id}
-
-
-@router.post("/login")
+# ✅ Login
+@router.post("/login", response_model=UserResponse)
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     if not db_user or not verify_password(user.password, db_user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = create_access_token({"sub": db_user.email})
-    return {"access_token": token, "token_type": "bearer"}
+    return {"id": db_user.id, "username": db_user.username, "email": db_user.email, "token": token}
+
 
 
 @router.post("/forgot-password")

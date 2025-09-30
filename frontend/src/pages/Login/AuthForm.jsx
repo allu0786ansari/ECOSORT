@@ -1,11 +1,11 @@
-// src/pages/Login/Login.js
+// src/pages/Login/AuthForm.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./login.css";
 
-const Login = ({ onLogin }) => {
-  const [authMode, setAuthMode] = useState("Sign Up"); // "Sign Up" or "Login"
+const AuthForm = ({ authMode: initialMode = "Login", onLogin }) => {
+  const [authMode, setAuthMode] = useState(initialMode);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -13,7 +13,6 @@ const Login = ({ onLogin }) => {
     agree: false,
   });
   const [loading, setLoading] = useState(false);
-
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -26,16 +25,9 @@ const Login = ({ onLogin }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (authMode === "Sign Up" && !formData.agree) {
-      alert("You must agree to the terms and conditions.");
-      return;
-    }
-
     setLoading(true);
     try {
       let response;
-
       if (authMode === "Sign Up") {
         response = await axios.post("http://localhost:8000/api/v1/auth/signup", {
           name: formData.name,
@@ -49,18 +41,13 @@ const Login = ({ onLogin }) => {
         });
       }
 
-      // Assuming backend returns JWT token
-      const { token, user } = response.data;
-      localStorage.setItem("authToken", token);
+      const user = response.data;
+      localStorage.setItem("authToken", user.token);
       localStorage.setItem("user", JSON.stringify(user));
-
-      onLogin(user); // Update App.js state
+      onLogin(user);
       navigate("/dashboard");
     } catch (error) {
-      console.error(error);
-      alert(
-        error.response?.data?.detail || "Authentication failed. Please try again."
-      );
+      alert(error.response?.data?.detail || "Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -139,4 +126,4 @@ const Login = ({ onLogin }) => {
   );
 };
 
-export default Login;
+export default AuthForm;

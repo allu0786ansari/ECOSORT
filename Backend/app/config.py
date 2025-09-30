@@ -1,49 +1,66 @@
 # app/config.py
-from pydantic_settings import BaseSettings
-from pydantic import Field
-from typing import List, Optional
 import os
+from functools import lru_cache
+from pydantic_settings import BaseSettings
+
 
 class Settings(BaseSettings):
-    # App & Project Config
-    PROJECT_NAME: str = "EcoSort AI"
-    PROJECT_VERSION: str = "1.0.0"
-    API_V1_STR: str = "/api/v1"
-    DATABASE_URL: Optional[str] = os.getenv("DATABASE_URL")
-    BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
-    YOLO_MODEL_PATH: str = os.getenv("YOLO_MODEL_PATH", "./app/Trained_model/best_model_waste_detection.pt")
+    # App
+    APP_NAME: str = "EcoSort"
+    APP_ENV: str = os.getenv("APP_ENV", "development")
+    APP_DEBUG: bool = APP_ENV != "production"
+    APP_HOST: str = os.getenv("APP_HOST", "0.0.0.0")
+    APP_PORT: int = int(os.getenv("APP_PORT", 8000))
 
-    # The following fields are from your .env file
-    APP_NAME: str
-    APP_ENV: str
-    APP_DEBUG: bool
-    APP_HOST: str
-    APP_PORT: int
-    GEMINI_API_KEY: str
-    GEMINI_MODEL: str
-    YOLO_CONFIDENCE_THRESHOLD: float
-    YOLO_IOU_THRESHOLD: float
-    TTS_PROVIDER: str
-    TTS_AUDIO_DIR: str
-    UPLOAD_DIR: str
-    ALLOWED_EXTENSIONS: str
-    POINTS_PER_CORRECT: int
-    BADGE_THRESHOLDS: str
+    # Database
+    DB_USER: str = os.getenv("DB_USER", "root")
+    DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
+    DB_HOST: str = os.getenv("DB_HOST", "localhost")
+    DB_NAME: str = os.getenv("DB_NAME", "ecosort_db")
+    DB_PORT: int = int(os.getenv("DB_PORT", 3306))
 
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
-        # The 'extra' setting is what caused your original error.
-        # It is set to 'forbid' by default, which means it raises an error
-        # if it finds fields in the .env file not in your model.
-        # By defining all the fields above, we resolve the issue.
+    @property
+    def DATABASE_URL(self) -> str:
+        """Build DB connection string dynamically (supports MySQL with/without password)."""
+        if self.DB_USER and self.DB_NAME:
+            if self.DB_PASSWORD:
+                return f"mysql+pymysql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+            else:
+                return f"mysql+pymysql://{self.DB_USER}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+        return "sqlite:///./app.db"
 
-# This function is used to create a settings object that can be
-# used as a FastAPI dependency.
-def get_settings():
+    # YOLO
+    YOLO_MODEL_PATH: str = os.getenv("YOLO_MODEL_PATH", "./app/Trained_model/best_model.pt")
+    YOLO_CONFIDENCE_THRESHOLD: float = float(os.getenv("YOLO_CONFIDENCE_THRESHOLD", 0.5))
+    YOLO_IOU_THRESHOLD: float = float(os.getenv("YOLO_IOU_THRESHOLD", 0.45))
+
+    # Gemini API
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
+
+    # TTS
+    TTS_PROVIDER: str = os.getenv("TTS_PROVIDER", "gtts")
+    TTS_AUDIO_DIR: str = os.getenv("TTS_AUDIO_DIR", "./app/static/audio")
+
+    # Gamification
+    ALLOWED_EXTENSIONS: str = os.getenv("ALLOWED_EXTENSIONS", "jpg,jpeg,png,mp4")
+    POINTS_PER_CORRECT: int = int(os.getenv("POINTS_PER_CORRECT", 10))
+    BADGE_THRESHOLDS: str = os.getenv("BADGE_THRESHOLDS", "50,100,200")
+
+    # Security
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "changeme")
+
+    # Paths
+    BASE_DIR: str = os.path.dirname(os.path.abspath(__file__))
+    STATIC_DIR: str = os.path.join(BASE_DIR, "static")
+    UPLOAD_DIR: str = os.path.join(STATIC_DIR, "uploads")
+
+    model_config = {
+        "env_file": ".env",
+        "extra": "allow",  # ✅ allows undeclared vars
+    }
+
+
+@lru_cache()
+def get_settings() -> Settings:
     return Settings()
-
-settings = get_settings()

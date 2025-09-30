@@ -1,13 +1,6 @@
 import React, { useState, useRef } from "react";
 import {
-  Camera,
-  User,
-  Home,
-  BookOpen,
-  MessageCircle,
-  Trophy,
-  Star,
-  Leaf,
+  Camera, User, Home, BookOpen, MessageCircle, Trophy, Star, Leaf,
 } from "lucide-react";
 import Dashboard from "../../components/Dashboard/Dashboard";
 import WasteAnalysis from "../../components/WasteAnalysis/WasteAnalysis";
@@ -17,15 +10,8 @@ import Leaderboard from "../../components/Leaderboard/Leaderboard";
 import Profile from "../../components/Profile/Profile";
 import "./MainApp.css";
 
-const MainApp = () => {
+const MainApp = ({ user, setUser }) => {
   const [currentView, setCurrentView] = useState("home");
-  const [user, setUser] = useState({
-    name: "Alex Green",
-    points: 1250,
-    level: "Eco Warrior",
-    streak: 15,
-    itemsAnalyzed: 87,
-  });
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [chatMessages, setChatMessages] = useState([
@@ -40,7 +26,6 @@ const MainApp = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const fileInputRef = useRef(null);
 
-  // Sample waste analysis results
   const wasteResults = [
     {
       item: "Plastic Water Bottle",
@@ -48,8 +33,8 @@ const MainApp = () => {
       confidence: 95,
       instructions:
         "Remove cap and label. Rinse thoroughly. Place in recycling bin.",
-      facts: "Did you know? It takes 450 years for a plastic bottle to decompose!",
-      ecoTip: "Consider using a reusable water bottle to reduce plastic waste.",
+      facts: "It takes 450 years for a plastic bottle to decompose!",
+      ecoTip: "Use a reusable water bottle to reduce plastic waste.",
       color: "green",
     },
     {
@@ -57,11 +42,9 @@ const MainApp = () => {
       category: "Compostable",
       confidence: 98,
       instructions:
-        "Perfect for composting! Add to your compost bin or food waste collection.",
-      facts:
-        "Banana peels are rich in potassium and make excellent fertilizer!",
-      ecoTip:
-        "You can also use banana peels to polish leather shoes naturally.",
+        "Add to your compost bin or food waste collection.",
+      facts: "Banana peels are rich in potassium and make excellent fertilizer!",
+      ecoTip: "Can be used to polish leather shoes naturally.",
       color: "yellow",
     },
     {
@@ -70,14 +53,12 @@ const MainApp = () => {
       confidence: 87,
       instructions:
         "Remove greasy parts and dispose as general waste. Clean parts can be recycled.",
-      facts:
-        "Greasy cardboard contaminates recycling streams and cannot be processed.",
-      ecoTip: "Order pizza without extra grease or ask for eco-friendly packaging.",
+      facts: "Greasy cardboard contaminates recycling streams.",
+      ecoTip: "Order pizza with eco-friendly packaging.",
       color: "orange",
     },
   ];
 
-  // Simulate AI analysis
   const analyzeWaste = async (imageFile) => {
     setIsAnalyzing(true);
     setSelectedImage(URL.createObjectURL(imageFile));
@@ -89,11 +70,13 @@ const MainApp = () => {
     setAnalysisResult(randomResult);
     setIsAnalyzing(false);
 
-    setUser((prev) => ({
-      ...prev,
-      points: prev.points + 10,
-      itemsAnalyzed: prev.itemsAnalyzed + 1,
-    }));
+    if (user) {
+      setUser((prev) => ({
+        ...prev,
+        points: prev.points + 10,
+        itemsAnalyzed: prev.itemsAnalyzed + 1,
+      }));
+    }
   };
 
   const handleImageUpload = (event) => {
@@ -108,8 +91,7 @@ const MainApp = () => {
     e.preventDefault();
     if (!chatInput.trim()) return;
 
-    const userMessage = chatInput;
-    setChatMessages((prev) => [...prev, { role: "user", message: userMessage }]);
+    setChatMessages((prev) => [...prev, { role: "user", message: chatInput }]);
     setChatInput("");
 
     setTimeout(() => {
@@ -179,13 +161,17 @@ const MainApp = () => {
           </div>
 
           <div className="app-header-user">
-            <div className="points">
-              <Star className="text-yellow-500" size={16} />
-              <span>{user.points}</span>
-            </div>
-            <div className="user-avatar">
-              <User className="text-white" size={16} />
-            </div>
+            {user && (
+              <>
+                <div className="points">
+                  <Star className="text-yellow-500" size={16} />
+                  <span>{user.points}</span>
+                </div>
+                <div className="user-avatar">
+                  <User className="text-white" size={16} />
+                </div>
+              </>
+            )}
           </div>
         </div>
       </header>

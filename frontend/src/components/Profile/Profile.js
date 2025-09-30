@@ -1,24 +1,53 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Award, TrendingUp, Leaf } from "lucide-react";
 import "./Profile.css";
 
-const Profile = ({ user }) => {
+const Profile = () => {
+  const [user, setUser] = useState(null);
+
+  // Load user from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("user");
+    if (saved) {
+      setUser(JSON.parse(saved));
+    }
+  }, []);
+
+  // Optional: listen for localStorage updates from other tabs
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem("user");
+      if (saved) setUser(JSON.parse(saved));
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
+  if (!user) {
+    return (
+      <div className="profile-container">
+        <h2>Not Logged In</h2>
+        <p>Please log in to view your profile and achievements.</p>
+      </div>
+    );
+  }
+
   const achievements = [
-    { title: "First Analysis", desc: "Analyzed your first item", icon: "🎯", earned: true },
-    { title: "Week Warrior", desc: "7-day sorting streak", icon: "🔥", earned: true },
-    { title: "Eco Expert", desc: "Reached 1000 points", icon: "⭐", earned: true },
-    { title: "Master Sorter", desc: "Analyzed 100 items", icon: "🏆", earned: false },
-    { title: "Green Guardian", desc: "Saved 100kg CO₂", icon: "🌱", earned: false },
-    { title: "Recycling Hero", desc: "Perfect week streak", icon: "♻️", earned: false },
+    { title: "First Analysis", desc: "Analyzed your first item", icon: "🎯", earned: user.itemsAnalyzed >= 1 },
+    { title: "Week Warrior", desc: "7-day sorting streak", icon: "🔥", earned: user.streak >= 7 },
+    { title: "Eco Expert", desc: "Reached 1000 points", icon: "⭐", earned: user.points >= 1000 },
+    { title: "Master Sorter", desc: "Analyzed 100 items", icon: "🏆", earned: user.itemsAnalyzed >= 100 },
+    { title: "Green Guardian", desc: "Saved 100kg CO₂", icon: "🌱", earned: user.co2Saved >= 100 },
+    { title: "Recycling Hero", desc: "Perfect week streak", icon: "♻️", earned: user.perfectWeekStreak },
   ];
 
-  const weeklyActivity = [12, 8, 15, 20, 18, 25, 22];
+  const weeklyActivity = user.weeklyActivity || [0, 0, 0, 0, 0, 0, 0]; // array of daily analysis counts
   const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
     <div className="profile-container">
       <div className="profile-header">
-        <h2>Your Profile</h2>
+        <h2>{user.username}'s Profile</h2>
         <p>Track your eco-journey and achievements</p>
       </div>
 
@@ -26,15 +55,26 @@ const Profile = ({ user }) => {
         {/* Profile Card */}
         <div className="profile-card">
           <div className="avatar">
-            {user.name.split(" ").map((n) => n[0]).join("")}
+            {user.username
+              ? user.username.split(" ").map((n) => n[0]).join("")
+              : "EU"}
           </div>
-          <h3>{user.name}</h3>
-          <p className="user-level">{user.level}</p>
+          <h3>{user.username}</h3>
+          <p className="user-level">{user.level || "Eco-Warrior"}</p>
 
           <div className="profile-stats">
-            <div><span>Total Points</span><strong>{user.points}</strong></div>
-            <div><span>Current Streak</span><strong>{user.streak} days</strong></div>
-            <div><span>Items Analyzed</span><strong>{user.itemsAnalyzed}</strong></div>
+            <div>
+              <span>Total Points</span>
+              <strong>{user.points || 0}</strong>
+            </div>
+            <div>
+              <span>Current Streak</span>
+              <strong>{user.streak || 0} days</strong>
+            </div>
+            <div>
+              <span>Items Analyzed</span>
+              <strong>{user.itemsAnalyzed || 0}</strong>
+            </div>
           </div>
 
           <button className="edit-btn">Edit Profile</button>
@@ -65,7 +105,7 @@ const Profile = ({ user }) => {
             <div className="activity-bars">
               {weeklyActivity.map((h, i) => (
                 <div key={i} className="bar">
-                  <div style={{ height: `${(h / 25) * 100}%` }}></div>
+                  <div style={{ height: `${(h / Math.max(...weeklyActivity, 1)) * 100}%` }}></div>
                   <span>{weekDays[i]}</span>
                 </div>
               ))}
@@ -77,18 +117,18 @@ const Profile = ({ user }) => {
             <h3><Leaf size={20} /> Your Environmental Impact</h3>
             <div className="impact-grid">
               <div>
-                <div className="impact-value green">45.2 kg</div>
+                <div className="impact-value green">{user.co2Saved || 0} kg</div>
                 <p>CO₂ Saved</p>
                 <small>This month</small>
               </div>
               <div>
-                <div className="impact-value blue">127</div>
+                <div className="impact-value blue">{user.itemsDiverted || 0}</div>
                 <p>Items Diverted</p>
                 <small>From landfills</small>
               </div>
             </div>
             <div className="impact-note">
-              🌍 Your actions this month equal planting <strong>2.3 trees</strong>!
+              🌍 Your actions this month equal planting <strong>{user.treesPlanted || 0} trees</strong>!
             </div>
           </div>
         </div>
