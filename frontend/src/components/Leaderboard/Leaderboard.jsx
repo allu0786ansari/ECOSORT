@@ -4,7 +4,7 @@ import { Trophy } from "lucide-react";
 import {
   fetchLeaderboard,
   fetchUserStats,
-  setUserScore, // ✅ updated import
+  setUserScore,
 } from "../../store/leaderboardSlice";
 import "./Leaderboard.css";
 
@@ -22,12 +22,18 @@ const Leaderboard = ({ user }) => {
     }
   }, [user?.token, user?.id, dispatch]);
 
-  // Sync local user points into leaderboard
+  // Sync local user score with leaderboard
   useEffect(() => {
-    if (user?.name) {
-      dispatch(setUserScore({ username: user.name, points: user.points })); // ✅ updated dispatch
+    if (user?.name && user?.points !== undefined) {
+      dispatch(
+        setUserScore({
+          username: user.name,
+          score: user.points,
+          itemsAnalyzed: user.itemsAnalyzed || 0,
+        })
+      );
     }
-  }, [user?.points, user?.name, dispatch]);
+  }, [user?.points, user?.itemsAnalyzed, user?.name, dispatch]);
 
   return (
     <div className="leaderboard-container">
@@ -50,8 +56,8 @@ const Leaderboard = ({ user }) => {
             </div>
           </div>
           <div className="user-stats">
-            <p>Total Points: {stats.total_score}</p>
-            <p>🔥 Streak: {stats.streak} days</p>
+            <p>Total Points: {stats.score}</p>
+            <p>🔥 Streak: {stats.streak || 0} days</p>
             <p>Analyzed: {stats.items_analyzed}/50 this week</p>
           </div>
         </div>
@@ -111,10 +117,14 @@ const Leaderboard = ({ user }) => {
             <div className="progress-bar">
               <div
                 className="progress-fill"
-                style={{ width: `${(stats.items_analyzed / 50) * 100}%` }}
+                style={{
+                  width: `${(stats.items_analyzed / 50) * 100}%`,
+                }}
               ></div>
             </div>
-            <span className="progress-text">{stats.items_analyzed}/50</span>
+            <span className="progress-text">
+              {stats.items_analyzed}/50
+            </span>
           </div>
         </div>
       )}

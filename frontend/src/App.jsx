@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Provider } from "react-redux";
 import { store } from "./store/store";
 import MainApp from "./pages/mainPage/MainApp";
-import Login from "./pages/Login/AuthForm"; // login/signup form
+import Login from "./pages/Login/AuthForm"; 
 
 function App() {
   // Load logged-in user from localStorage
@@ -30,9 +30,14 @@ function App() {
     <Provider store={store}>
       <Router>
         <Routes>
+          {/* Dashboard is the default first render */}
+          <Route path="/" element={<MainApp user={user} setUser={setUser} />} />
+
+          {/* Auth routes */}
           <Route path="/login" element={<Login onLogin={handleLogin} />} />
           <Route path="/signup" element={<Login onLogin={handleLogin} />} />
-          {/* All other routes go to MainApp */}
+
+          {/* Catch-all fallback */}
           <Route path="*" element={<MainApp user={user} setUser={setUser} />} />
         </Routes>
       </Router>

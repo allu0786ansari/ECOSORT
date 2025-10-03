@@ -32,8 +32,7 @@ def create_app() -> FastAPI:
     os.makedirs(os.path.join(static_dir, "audio"), exist_ok=True)
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-    # Include only implemented routers
-    from app.api.v1 import predict, gamification
+    
     app.include_router(predict.router, prefix="/api/v1", tags=["predict"])
     app.include_router(gamification.router, prefix="/api/v1", tags=["gamification"])
     app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])

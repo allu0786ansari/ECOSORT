@@ -1,8 +1,13 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
 import {
-  Recycle, Zap, Leaf, Volume2, VolumeX,
-  Share2, RotateCcw, AlertCircle
+  Recycle,
+  Zap,
+  Leaf,
+  Volume2,
+  VolumeX,
+  Share2,
+  RotateCcw,
+  AlertCircle,
 } from "lucide-react";
 import "./WasteAnalysis.css";
 
@@ -17,21 +22,20 @@ const AnalysisView = ({
   onShare,
   onAnalyzeAgain,
   user,
-  error
+  error,
 }) => {
-  const navigate = useNavigate();
-
-  // Loading / analyzing state
   if (isAnalyzing) {
     return (
       <div className="wa-analyzing">
         <div className="wa-spinner"></div>
         <h2>
-          Analyzing your {selectedMode} ({Math.min(currentIndex + 1, selectedFiles.length)} of{" "}
+          Analyzing your {selectedMode} (
+          {Math.min(currentIndex + 1, selectedFiles.length)} of{" "}
           {selectedFiles.length})...
         </h2>
         <p>Our AI is processing your input</p>
-        {selectedFiles.length > 0 && currentIndex < selectedFiles.length &&
+        {selectedFiles.length > 0 &&
+          currentIndex < selectedFiles.length &&
           (selectedMode === "image" ? (
             <img
               src={selectedFiles[currentIndex]}
@@ -39,17 +43,12 @@ const AnalysisView = ({
               className="wa-preview"
             />
           ) : (
-            <video
-              src={selectedFiles[currentIndex]}
-              controls
-              className="wa-preview"
-            />
+            <video src={selectedFiles[currentIndex]} controls className="wa-preview" />
           ))}
       </div>
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="wa-error">
@@ -63,15 +62,15 @@ const AnalysisView = ({
     );
   }
 
-  if (results.length === 0) return null;
+  if (!results || results.length === 0) return null;
 
   return (
     <div className="wa-analysis-container">
       <div className="wa-header">
         <h2>Analysis Results ({results.length})</h2>
         <p>
-          {user
-            ? `Welcome back, ${user.username}! Your points have been updated in the leaderboard.`
+          {user?.name
+            ? `Welcome back, ${user.name}! Your points have been updated.`
             : "Sign up to save progress and join the leaderboard!"}
         </p>
       </div>
@@ -79,24 +78,17 @@ const AnalysisView = ({
       <div className="wa-results-grid">
         {results.map((result, index) => (
           <div key={`result-${index}`} className="wa-analysis-card">
-            <div className="wa-media-card" style={{ position: "relative" }}>
+            <div className="wa-media-card">
               {selectedMode === "image" ? (
                 <img
                   src={selectedFiles[index]}
                   alt={`Analyzed ${index + 1}`}
                   className="wa-preview"
-                  onError={(e) => { e.target.src = '/placeholder-image.png'; }}
+                  onError={(e) => (e.target.src = "/placeholder-image.png")}
                 />
               ) : (
-                <video 
-                  src={selectedFiles[index]} 
-                  controls
-                  className="wa-preview"
-                  onError={(e) => console.error('Video load error:', e)}
-                />
+                <video src={selectedFiles[index]} controls className="wa-preview" />
               )}
-
-              {/* Bounding Boxes */}
               {result.bboxes?.map((box, idx) => (
                 <div
                   key={idx}
@@ -108,7 +100,6 @@ const AnalysisView = ({
                     top: box.bbox[1],
                     width: box.bbox[2] - box.bbox[0],
                     height: box.bbox[3] - box.bbox[1],
-                    pointerEvents: "none",
                   }}
                   title={`${box.label} (${Math.round(box.confidence * 100)}%)`}
                 >
@@ -141,36 +132,29 @@ const AnalysisView = ({
               </div>
 
               <div className="wa-card">
-                <h4><Recycle size={20} className="icon-green" /> How to Sort</h4>
+                <h4>
+                  <Recycle size={20} className="icon-green" /> How to Sort
+                </h4>
                 <p>{result.instructions || "No specific instructions available."}</p>
               </div>
 
               <div className="wa-card blue">
-                <h4><Zap size={20} className="icon-blue" /> Did You Know?</h4>
+                <h4>
+                  <Zap size={20} className="icon-blue" /> Did You Know?
+                </h4>
                 <p>{result.facts || "Recycling helps reduce environmental impact."}</p>
               </div>
 
               <div className="wa-card green">
-                <h4><Leaf size={20} className="icon-green" /> Eco Tip</h4>
+                <h4>
+                  <Leaf size={20} className="icon-green" /> Eco Tip
+                </h4>
                 <p>{result.ecoTip || "Always clean items before recycling."}</p>
               </div>
             </div>
           </div>
         ))}
       </div>
-
-      {/* Show CTA only if user not logged in */}
-      {!user && (
-        <div className="guest-cta">
-          <p>🌍 Want to track points & join eco-leaderboard?</p>
-          <button 
-            className="wa-btn wa-btn-primary"
-            onClick={() => navigate("/signup")}
-          >
-            Create Account
-          </button>
-        </div>
-      )}
 
       <div className="wa-actions">
         <button className="wa-btn wa-btn-primary" onClick={onShare}>

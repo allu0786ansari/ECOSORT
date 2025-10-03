@@ -23,35 +23,46 @@ const AuthForm = ({ authMode: initialMode = "Login", onLogin }) => {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      let response;
-      if (authMode === "Sign Up") {
-        response = await axios.post("http://localhost:8000/api/v1/auth/signup", {
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-        });
-      } else {
-        response = await axios.post("http://localhost:8000/api/v1/auth/login", {
-          email: formData.email,
-          password: formData.password,
-        });
-      }
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  try {
+    let response;
+    if (authMode === "Sign Up") {
+      // signup API
+      response = await axios.post("http://localhost:8000/api/v1/auth/signup", {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      });
 
+      // after successful signup → go to login page
+      alert("Signup successful! Please log in.");
+      setAuthMode("Login");
+      navigate("/login");
+
+    } else {
+      // login API
+      response = await axios.post("http://localhost:8000/api/v1/auth/login", {
+        email: formData.email,
+        password: formData.password,
+      });
+
+      // store user data
       const user = response.data;
       localStorage.setItem("authToken", user.token);
       localStorage.setItem("user", JSON.stringify(user));
       onLogin(user);
+
+      // after successful login → go to dashboard
       navigate("/dashboard");
-    } catch (error) {
-      alert(error.response?.data?.detail || "Authentication failed");
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (error) {
+    alert(error.response?.data?.detail || "Authentication failed");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="login-container">

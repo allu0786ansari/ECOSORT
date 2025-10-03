@@ -11,30 +11,28 @@ import CameraView from "./CameraView";
 import AnalysisView from "./AnalysisView";
 import "./WasteAnalysis.css";
 
-// Helper component to render bounding boxes
-const BoundingBoxOverlay = ({ bboxes, scale = 1 }) => {
-  return (
-    <div className="bbox-container">
-      {bboxes.map((box, index) => {
-        const [x1, y1, x2, y2] = box.bbox.map((v) => v * scale);
-        return (
-          <div
-            key={index}
-            className="bbox"
-            style={{
-              left: x1,
-              top: y1,
-              width: x2 - x1,
-              height: y2 - y1,
-              borderColor: "red",
-            }}
-            title={`${box.label} (${Math.round(box.confidence * 100)}%)`}
-          ></div>
-        );
-      })}
-    </div>
-  );
-};
+// Bounding Box Overlay Component
+const BoundingBoxOverlay = ({ bboxes, scale = 1 }) => (
+  <div className="bbox-container">
+    {bboxes.map((box, index) => {
+      const [x1, y1, x2, y2] = box.bbox.map((v) => v * scale);
+      return (
+        <div
+          key={index}
+          className="bbox"
+          style={{
+            left: x1,
+            top: y1,
+            width: x2 - x1,
+            height: y2 - y1,
+            borderColor: "red",
+          }}
+          title={`${box.label} (${Math.round(box.confidence * 100)}%)`}
+        ></div>
+      );
+    })}
+  </div>
+);
 
 const WasteAnalysis = () => {
   const [selectedMode, setSelectedMode] = useState("image");
@@ -52,14 +50,9 @@ const WasteAnalysis = () => {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.auth?.user);
   const points = useSelector((state) => state.leaderboard.points);
+  const itemsAnalyzed = useSelector((state) => state.leaderboard.itemsAnalyzed);
 
-  // Removed prompt, simplified
-  const handleFirstAnalysis = useCallback(async () => {
-    if (!user || !user.name) {
-      console.warn("No logged-in user found. Leaderboard updates will be skipped.");
-    }
-  }, [user]);
-
+  // ✅ File validation
   const validateFile = (file, type) => {
     const maxSize = type === "image" ? 10 * 1024 * 1024 : 100 * 1024 * 1024;
     const allowedTypes =
@@ -73,30 +66,34 @@ const WasteAnalysis = () => {
     return true;
   };
 
+  // ✅ Sequential analysis
   const analyzeAllFilesSequentially = useCallback(
-    async (fileBlobs, fileDataArray, mode) => {
+    async (fileBlobs, fileDataArray) => {
       setShowAnalysis(true);
       setIsAnalyzing(true);
       setError(null);
       const analysisResults = [];
 
       try {
-        await handleFirstAnalysis();
-
         for (let i = 0; i < fileBlobs.length; i++) {
           setCurrentIndex(i);
           const formData = new FormData();
           formData.append("file", fileBlobs[i]);
 
           try {
-            const response = await fetch("http://localhost:8000/api/v1/predict", {
-              method: "POST",
-              body: formData,
-            });
+            const response = await fetch(
+              "http://localhost:8000/api/v1/predict",
+              {
+                method: "POST",
+                body: formData,
+              }
+            );
 
             if (!response.ok) {
               const errorData = await response.json().catch(() => ({}));
-              throw new Error(errorData.message || `Server error: ${response.status}`);
+              throw new Error(
+                errorData.message || `Server error: ${response.status}`
+              );
             }
 
             const data = await response.json();
@@ -111,39 +108,63 @@ const WasteAnalysis = () => {
               item: data.label || "Unknown Item",
               color: "blue",
               category: data.category || data.label || "Uncategorized",
-              confidence: data.confidence ? Math.round(data.confidence * 100) : null,
-              instructions: data.instructions || "No sorting instructions.",
+              confidence: data.confidence
+                ? Math.round(data.confidence * 100)
+                : null,
+              instructions:
+                data.instructions || "No sorting instructions available.",
               facts: data.facts || "Recycling reduces waste pollution.",
-              ecoTip: data.eco_tip || "Clean items before recycling.",
-              bboxes: bboxes,
+              ecoTip: data.eco_tip || "Always clean items before recycling.",
+              bboxes,
             };
 
             analysisResults.push(result);
 
-            dispatch(addPoints(10));
+            // ✅ Scoring logic: 150 points, but after 5 analyses → 210
+            const newItems = itemsAnalyzed + 1;
+            const scoreIncrement = newItems > 5 ? 210 : 150;
+            const newPoints = points + scoreIncrement;
+
+            // Redux updates
+            dispatch(addPoints(scoreIncrement));
             dispatch(
-              addAnalysis({
-                ...result,
-                timestamp: new Date().toISOString(),
-              })
+              addAnalysis({ ...result, timestamp: new Date().toISOString() })
             );
 
-            // Post leaderboard update only if user logged in
-            if (user?.name) {
-              await axios.post("http://localhost:8000/api/v1/leaderboard", {
-                user_id: user.name,
-                score: points + 10,
-                itemsAnalyzed: i + 1,
-              });
-              dispatch(setUserScore({ username: user.name, points: points + 10 }));
+            // ✅ Backend leaderboard update
+            if (user?.id && user?.token) {
+              try {
+                await axios.post(
+                  "http://localhost:8000/api/v1/leaderboard",
+                  {
+                    user_id: user.id,
+                    score: newPoints,
+                    items_analyzed: newItems,
+                  },
+                  {
+                    headers: { Authorization: `Bearer ${user.token}` },
+                  }
+                );
+
+                dispatch(
+                  setUserScore({
+                    userId: user.id,
+                    username: user.name,
+                    score: newPoints,
+                    itemsAnalyzed: newItems,
+                  })
+                );
+              } catch (err) {
+                console.error("❌ Failed to update leaderboard:", err);
+              }
             }
-          } catch (error) {
-            console.error(`Analysis error for file ${i + 1}:`, error);
+          } catch (err) {
+            console.error(`❌ Analysis error for file ${i + 1}:`, err);
             analysisResults.push({
               item: `Analysis Failed (File ${i + 1})`,
               color: "red",
               category: "Error",
-              instructions: `Could not analyze: ${error.message}`,
+              instructions: `Could not analyze: ${err.message}`,
               ecoTip: "Try a clearer photo with better lighting.",
               bboxes: [],
             });
@@ -151,16 +172,16 @@ const WasteAnalysis = () => {
         }
 
         setResults(analysisResults);
-      } catch (error) {
-        console.error("Sequential analysis error:", error);
-        setError(error.message);
+      } catch (err) {
+        setError(err.message);
       } finally {
         setIsAnalyzing(false);
       }
     },
-    [dispatch, handleFirstAnalysis, points, user?.name]
+    [dispatch, user, points, itemsAnalyzed]
   );
 
+  // ✅ Image upload
   const handleImageUpload = useCallback(
     (e) => {
       try {
@@ -168,7 +189,6 @@ const WasteAnalysis = () => {
         const files = Array.from(e.target.files);
         if (!files.length) return;
         if (files.length > 10) throw new Error("Maximum 10 images allowed");
-
         files.forEach((file) => validateFile(file, "image"));
 
         const readers = files.map(
@@ -176,18 +196,17 @@ const WasteAnalysis = () => {
             new Promise((resolve, reject) => {
               const reader = new FileReader();
               reader.onload = (ev) => resolve(ev.target.result);
-              reader.onerror = () => reject(new Error(`Failed to read: ${file.name}`));
+              reader.onerror = () =>
+                reject(new Error(`Failed to read: ${file.name}`));
               reader.readAsDataURL(file);
             })
         );
 
-        Promise.all(readers)
-          .then((fileDataArray) => {
-            setSelectedFiles(fileDataArray);
-            setCurrentIndex(0);
-            analyzeAllFilesSequentially(files, fileDataArray, "image");
-          })
-          .catch((err) => setError(err.message));
+        Promise.all(readers).then((fileDataArray) => {
+          setSelectedFiles(fileDataArray);
+          setCurrentIndex(0);
+          analyzeAllFilesSequentially(files, fileDataArray);
+        });
       } catch (err) {
         setError(err.message);
       } finally {
@@ -197,19 +216,18 @@ const WasteAnalysis = () => {
     [analyzeAllFilesSequentially]
   );
 
+  // ✅ Video upload
   const handleVideoUpload = useCallback(
     (e) => {
       try {
         setError(null);
         const file = e.target.files[0];
         if (!file) return;
-
         validateFile(file, "video");
         const url = URL.createObjectURL(file);
-
         setSelectedFiles([url]);
         setCurrentIndex(0);
-        analyzeAllFilesSequentially([file], [url], "video");
+        analyzeAllFilesSequentially([file], [url]);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -220,7 +238,7 @@ const WasteAnalysis = () => {
   );
 
   const handleTakePhoto = useCallback(() => {
-    alert("Camera access needs to be implemented.");
+    alert("Camera functionality is not implemented yet.");
   }, []);
 
   const handleAnalyzeAgain = useCallback(() => {
@@ -230,12 +248,9 @@ const WasteAnalysis = () => {
     setResults([]);
     setIsAnalyzing(false);
     setError(null);
+  }, []);
 
-    selectedFiles.forEach((url) => {
-      if (url.startsWith("blob:")) URL.revokeObjectURL(url);
-    });
-  }, [selectedFiles]);
-
+  // Cleanup blob URLs
   useEffect(() => {
     return () => {
       selectedFiles.forEach((url) => {
@@ -269,7 +284,7 @@ const WasteAnalysis = () => {
           }}
           user={user}
           error={error}
-          BoundingBoxOverlay={BoundingBoxOverlay} // pass overlay component
+          BoundingBoxOverlay={BoundingBoxOverlay}
         />
       ) : (
         <CameraView
