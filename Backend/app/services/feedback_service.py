@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.feedback_m import Feedback_m
+from app.models.feedback_m import Feedback
 from app.schemas.feedback import FeedbackRequest, FeedbackResponse
 from loguru import logger
 

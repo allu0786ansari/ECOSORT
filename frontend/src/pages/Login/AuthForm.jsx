@@ -1,11 +1,11 @@
-// src/pages/Login/Login.js
+// src/pages/Login/AuthForm.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./login.css";
 
-const Login = ({ onLogin }) => {
-  const [authMode, setAuthMode] = useState("Sign Up"); // "Sign Up" or "Login"
+const AuthForm = ({ authMode: initialMode = "Login", onLogin }) => {
+  const [authMode, setAuthMode] = useState(initialMode);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -13,7 +13,6 @@ const Login = ({ onLogin }) => {
     agree: false,
   });
   const [loading, setLoading] = useState(false);
-
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -24,47 +23,46 @@ const Login = ({ onLogin }) => {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  try {
+    let response;
+    if (authMode === "Sign Up") {
+      // signup API
+      response = await axios.post("http://localhost:8000/api/v1/auth/signup", {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      });
 
-    if (authMode === "Sign Up" && !formData.agree) {
-      alert("You must agree to the terms and conditions.");
-      return;
-    }
+      // after successful signup → go to login page
+      alert("Signup successful! Please log in.");
+      setAuthMode("Login");
+      navigate("/login");
 
-    setLoading(true);
-    try {
-      let response;
+    } else {
+      // login API
+      response = await axios.post("http://localhost:8000/api/v1/auth/login", {
+        email: formData.email,
+        password: formData.password,
+      });
 
-      if (authMode === "Sign Up") {
-        response = await axios.post("http://localhost:8000/api/v1/auth/signup", {
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-        });
-      } else {
-        response = await axios.post("http://localhost:8000/api/v1/auth/login", {
-          email: formData.email,
-          password: formData.password,
-        });
-      }
-
-      // Assuming backend returns JWT token
-      const { token, user } = response.data;
-      localStorage.setItem("authToken", token);
+      // store user data
+      const user = response.data;
+      localStorage.setItem("authToken", user.token);
       localStorage.setItem("user", JSON.stringify(user));
+      onLogin(user);
 
-      onLogin(user); // Update App.js state
+      // after successful login → go to dashboard
       navigate("/dashboard");
-    } catch (error) {
-      console.error(error);
-      alert(
-        error.response?.data?.detail || "Authentication failed. Please try again."
-      );
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (error) {
+    alert(error.response?.data?.detail || "Authentication failed");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="login-container">
@@ -139,4 +137,4 @@ const Login = ({ onLogin }) => {
   );
 };
 
-export default Login;
+export default AuthForm;

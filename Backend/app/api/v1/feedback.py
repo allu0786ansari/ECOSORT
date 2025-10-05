@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.schemas.feedback import FeedbackRequest, FeedbackResponse
 from app.services.feedback_service import save_feedback, get_all_feedback
-from app.dependencies import get_db
+from app.database.session import get_db
 
 router = APIRouter()
 

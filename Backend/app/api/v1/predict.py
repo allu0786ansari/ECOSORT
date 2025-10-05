@@ -30,6 +30,11 @@ async def predict(file: UploadFile = File(...)):
         else:
             raise HTTPException(status_code=400, detail="Unsupported file type")
 
+
+ # 👇 Add debug print here
+        print(f"\n[DEBUG] Processed file: {file.filename}")
+        print(f"[DEBUG] Prediction result: {result}\n")
+
         return JSONResponse(
             content={
                 "filename": file.filename,
